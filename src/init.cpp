@@ -320,6 +320,9 @@ std::string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-proxyrandomize", strprintf(_("Randomize credentials for every proxy connection. This enables Tor stream isolation (default: %u)"), 1));
     strUsage += HelpMessageOpt("-seednode=<ip>", _("Connect to a node to retrieve peer addresses, and disconnect"));
     strUsage += HelpMessageOpt("-timeout=<n>", strprintf(_("Specify connection timeout in milliseconds (minimum: 1, default: %d)"), DEFAULT_CONNECT_TIMEOUT));
+    strUsage += HelpMessageOpt("-limitdownloadblocks=<n>", _("Limit download blocks number from this node's height (default: INT32_MAX)"));
+    strUsage += HelpMessageOpt("-outboundconnections=<n>", _("Max outbound connections, should <= -maxconnections (default: 8)"));
+    strUsage += HelpMessageOpt("-relaytransaction", _("Enalbe relay transactions and collection them into mempool (default: 1)"));
 #ifdef USE_UPNP
 #if USE_UPNP
     strUsage += HelpMessageOpt("-upnp", _("Use UPnP to map the listening port (default: 1 when listening)"));
