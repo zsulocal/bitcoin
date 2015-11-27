@@ -146,6 +146,8 @@ void CTxMemPool::remove(const CTransaction &origTx, std::list<CTransaction>& rem
 
             removed.push_back(tx);
             totalTxSize -= mapTx[hash].GetTxSize();
+            LogPrintf("remove tx hash %s\n", hash.ToString());
+            fastTxs.remove(hash);
             mapTx.erase(hash);
             nTransactionsUpdated++;
             minerPolicyEstimator->removeTx(hash);
@@ -187,8 +189,15 @@ void CTxMemPool::removeConflicts(const CTransaction &tx, std::list<CTransaction>
         std::map<COutPoint, CInPoint>::iterator it = mapNextTx.find(txin.prevout);
         if (it != mapNextTx.end()) {
             const CTransaction &txConflict = *it->second.ptx;
+            LogPrintf("conflict with tx %s\n", txConflict.GetHash().ToString());
+            std::list<uint256>::iterator txiter = std::find(fastTxs.begin(), fastTxs.end(), txConflict.GetHash());
+            LogPrintf("conflict1 with tx %d\n", fastTxs.size());
+            if (txiter != fastTxs.end()) {
+                LogPrintf("conflict2 %s\n", tx.GetHash().ToString());
+            }
             if (txConflict != tx)
             {
+                removed.push_back(txConflict);
                 remove(txConflict, removed, true);
             }
         }

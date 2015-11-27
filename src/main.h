@@ -114,6 +114,7 @@ extern bool fIsBareMultisigStd;
 extern bool fCheckBlockIndex;
 extern bool fCheckpointsEnabled;
 extern size_t nCoinCacheUsage;
+extern int32_t nLimitDownloadBlocks;
 extern CFeeRate minRelayTxFee;
 extern bool fAlerts;
 
@@ -237,6 +238,10 @@ void PruneAndFlush();
 bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState &state, const CTransaction &tx, bool fLimitFree,
                         bool* pfMissingInputs, bool fRejectAbsurdFee=false);
 
+/** (try to) add fastblock transaction to memory pool **/
+bool AcceptFastToMemoryPool(CTxMemPool& pool, CValidationState &state, const CTransaction &tx, bool fLimitFree,
+                        bool* pfMissingInputs, bool fRejectAbsurdFee=false);
+
 
 struct CNodeStateStats {
     int nMisbehavior;
@@ -326,7 +331,7 @@ bool CheckTransaction(const CTransaction& tx, CValidationState& state);
 /** Check for standard transaction types
  * @return True if all outputs (scriptPubKeys) use only standard transaction forms
  */
-bool IsStandardTx(const CTransaction& tx, std::string& reason);
+bool IsStandardTx(const CTransaction& tx, std::string& reason, bool limitTxSize = true);
 
 /**
  * Check if transaction is final and can be included in a block with the

@@ -54,8 +54,6 @@
 using namespace std;
 
 namespace {
-    const int MAX_OUTBOUND_CONNECTIONS = 8;
-
     struct ListenSocket {
         SOCKET socket;
         bool whitelisted;
@@ -78,6 +76,8 @@ static CNode* pnodeLocalHost = NULL;
 uint64_t nLocalHostNonce = 0;
 static std::vector<ListenSocket> vhListenSocket;
 CAddrMan addrman;
+int nMaxOutboundConnections = 8;
+int relayTransaction=1;
 int nMaxConnections = 125;
 bool fAddressesInitialized = false;
 
@@ -857,7 +857,7 @@ void ThreadSocketHandler()
                     LogPrintf("connection from %s dropped: non-selectable socket\n", addr.ToString());
                     CloseSocket(hSocket);
                 }
-                else if (nInbound >= nMaxConnections - MAX_OUTBOUND_CONNECTIONS)
+                else if (nMaxConnections > nMaxOutboundConnections && nInbound >= nMaxConnections - nMaxOutboundConnections)
                 {
                     LogPrint("net", "connection from %s dropped (full)\n", addr.ToString());
                     CloseSocket(hSocket);
@@ -1632,7 +1632,7 @@ void StartNode(boost::thread_group& threadGroup, CScheduler& scheduler)
 
     if (semOutbound == NULL) {
         // initialize semaphore
-        int nMaxOutbound = min(MAX_OUTBOUND_CONNECTIONS, nMaxConnections);
+        int nMaxOutbound = min(nMaxOutboundConnections, nMaxConnections);
         semOutbound = new CSemaphore(nMaxOutbound);
     }
 
@@ -1674,7 +1674,7 @@ bool StopNode()
     LogPrintf("StopNode()\n");
     MapPort(false);
     if (semOutbound)
-        for (int i=0; i<MAX_OUTBOUND_CONNECTIONS; i++)
+        for (int i=0; i<nMaxOutboundConnections; i++)
             semOutbound->post();
 
     if (fAddressesInitialized)

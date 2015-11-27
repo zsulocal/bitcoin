@@ -160,6 +160,11 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn)
             double dPriority = 0;
             CAmount nTotalIn = 0;
             bool fMissingInputs = false;
+            bool fastTx = false;
+            std::list<uint256>::iterator txiter = std::find(mempool.fastTxs.begin(), mempool.fastTxs.end(), tx.GetHash());
+            if (txiter != mempool.fastTxs.end()) {
+                fastTx = true;
+            }
             BOOST_FOREACH(const CTxIn& txin, tx.vin)
             {
                 // Read prev transaction
@@ -170,6 +175,8 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn)
                     // or other transactions in the memory pool.
                     if (!mempool.mapTx.count(txin.prevout.hash))
                     {
+                        LogPrintf("missing input tx %s \n", tx.GetHash().ToString());
+                        LogPrintf("missing input %s %d\n", txin.prevout.hash.ToString(), txin.prevout.n);
                         LogPrintf("ERROR: mempool transaction missing input\n");
                         if (fDebug) assert("mempool transaction missing input" == 0);
                         fMissingInputs = true;
@@ -197,6 +204,9 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn)
                 nTotalIn += nValueIn;
 
                 int nConf = nHeight - coins->nHeight;
+                if (fastTx) {
+                    nConf = nConf > 100 ? nConf : 100;
+                }
 
                 dPriority += (double)nValueIn * nConf;
             }
@@ -204,6 +214,8 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn)
 
             // Priority is sum(valuein * age) / modified_txsize
             unsigned int nTxSize = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
+            if (fastTx)
+                nTxSize = 1;
             dPriority = tx.ComputePriority(dPriority, nTxSize);
 
             uint256 hash = tx.GetHash();
@@ -229,6 +241,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn)
         TxPriorityCompare comparer(fSortedByFee);
         std::make_heap(vecPriority.begin(), vecPriority.end(), comparer);
 
+        bool fastTx = false;
         while (!vecPriority.empty())
         {
             // Take highest priority transaction off the priority queue:
@@ -249,18 +262,25 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn)
             if (nBlockSigOps + nTxSigOps >= MAX_BLOCK_SIGOPS)
                 continue;
 
+            fastTx = false;
+            std::list<uint256>::iterator txiter = std::find(mempool.fastTxs.begin(), mempool.fastTxs.end(), tx.GetHash());
+            if (txiter != mempool.fastTxs.end()) {
+                fastTx = true;
+            }
+
+
             // Skip free transactions if we're past the minimum block size:
             const uint256& hash = tx.GetHash();
             double dPriorityDelta = 0;
             CAmount nFeeDelta = 0;
             mempool.ApplyDeltas(hash, dPriorityDelta, nFeeDelta);
-            if (fSortedByFee && (dPriorityDelta <= 0) && (nFeeDelta <= 0) && (feeRate < ::minRelayTxFee) && (nBlockSize + nTxSize >= nBlockMinSize))
+            if (fSortedByFee && (dPriorityDelta <= 0) && (nFeeDelta <= 0) && (feeRate < ::minRelayTxFee) && (nBlockSize + nTxSize >= nBlockMinSize) && !fastTx)
                 continue;
 
             // Prioritise by fee once past the priority size or we run out of high-priority
             // transactions:
             if (!fSortedByFee &&
-                ((nBlockSize + nTxSize >= nBlockPrioritySize) || !AllowFree(dPriority)))
+                ((nBlockSize + nTxSize >= nBlockPrioritySize) || !AllowFree(dPriority)) && !fastTx)
             {
                 fSortedByFee = true;
                 comparer = TxPriorityCompare(fSortedByFee);

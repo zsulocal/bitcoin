@@ -99,6 +99,7 @@ public:
     std::map<uint256, CTxMemPoolEntry> mapTx;
     std::map<COutPoint, CInPoint> mapNextTx;
     std::map<uint256, std::pair<double, CAmount> > mapDeltas;
+    std::list<uint256> fastTxs;
 
     CTxMemPool(const CFeeRate& _minRelayFee);
     ~CTxMemPool();
