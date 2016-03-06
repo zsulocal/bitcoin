@@ -158,6 +158,8 @@ extern CAddrMan addrman;
 
 /** Maximum number of connections to simultaneously allow (aka connection slots) */
 extern int nMaxConnections;
+extern int nMaxOutboundConnections;
+extern int relayTransaction;
 
 extern std::vector<CNode*> vNodes;
 extern CCriticalSection cs_vNodes;
