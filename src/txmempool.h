@@ -98,6 +98,7 @@ public:
     int64_t GetTime() const { return nTime; }
     unsigned int GetHeight() const { return entryHeight; }
     bool WasClearAtEntry() const { return hadNoDependencies; }
+    bool isPriority; //!  Used for if the transaction has a high priority
     unsigned int GetSigOpCount() const { return sigOpCount; }
     int64_t GetModifiedFee() const { return nFee + feeDelta; }
     size_t DynamicMemoryUsage() const { return nUsageSize; }
@@ -113,6 +114,7 @@ public:
      *  when re-adding transactions from a block back to the mempool.
      */
     void SetDirty();
+    void SetPriority(bool _isPriority) { isPriority = _isPriority; };
     bool IsDirty() const { return nCountWithDescendants == 0; }
 
     uint64_t GetCountWithDescendants() const { return nCountWithDescendants; }
@@ -218,6 +220,7 @@ public:
         return f1 > f2;
     }
 };
+
 
 class CompareTxMemPoolEntryByEntryTime
 {
@@ -395,7 +398,8 @@ private:
 public:
     std::map<COutPoint, CInPoint> mapNextTx;
     std::map<uint256, std::pair<double, CAmount> > mapDeltas;
-    std::list<uint256> fastTxs;
+    std::set<uint256> fastTxs;
+
 
     /** Create a new CTxMemPool.
      *  minReasonableRelayFee should be a feerate which is, roughly, somewhere
@@ -428,7 +432,7 @@ public:
                         std::list<CTransaction>& conflicts, bool fCurrentEstimate = true);
     void clear();
     void _clear(); //lock free
-    void queryHashes(std::vector<uint256>& vtxid);
+    void queryHashes(std::vector<uint256>& vtxid, bool fPriority = false);
     void pruneSpent(const uint256& hash, CCoins &coins);
     unsigned int GetTransactionsUpdated() const;
     void AddTransactionsUpdated(unsigned int n);

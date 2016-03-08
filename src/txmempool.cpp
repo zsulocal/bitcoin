@@ -429,7 +429,6 @@ void CTxMemPool::removeUnchecked(txiter it)
     mapLinks.erase(it);
     mapTx.erase(it);
     LogPrintf("remove tx hash %s\n", hash.ToString());
-    fastTxs.remove(hash);
     nTransactionsUpdated++;
     minerPolicyEstimator->removeTx(hash);
 }
@@ -540,11 +539,6 @@ void CTxMemPool::removeConflicts(const CTransaction &tx, std::list<CTransaction>
         if (it != mapNextTx.end()) {
             const CTransaction &txConflict = *it->second.ptx;
             LogPrintf("conflict with tx %s\n", txConflict.GetHash().ToString());
-            std::list<uint256>::iterator txiter = std::find(fastTxs.begin(), fastTxs.end(), txConflict.GetHash());
-            LogPrintf("conflict1 with tx %d\n", fastTxs.size());
-            if (txiter != fastTxs.end()) {
-                LogPrintf("conflict2 %s\n", tx.GetHash().ToString());
-            }
             if (txConflict != tx)
             {
                 removed.push_back(txConflict);
@@ -711,14 +705,17 @@ void CTxMemPool::check(const CCoinsViewCache *pcoins) const
     assert(innerUsage == cachedInnerUsage);
 }
 
-void CTxMemPool::queryHashes(vector<uint256>& vtxid)
+void CTxMemPool::queryHashes(vector<uint256>& vtxid, bool fPriority)
 {
     vtxid.clear();
 
     LOCK(cs);
     vtxid.reserve(mapTx.size());
-    for (indexed_transaction_set::iterator mi = mapTx.begin(); mi != mapTx.end(); ++mi)
+    for (indexed_transaction_set::iterator mi = mapTx.begin(); mi != mapTx.end(); ++mi) {
+        if (fPriority && !mi->isPriority)
+            continue;
         vtxid.push_back(mi->GetTx().GetHash());
+    }
 }
 
 bool CTxMemPool::lookup(uint256 hash, CTransaction& result) const
