@@ -263,8 +263,8 @@ UniValue getrawmempool(const UniValue& params, bool fHelp)
             "  }, ...\n"
             "}\n"
             "\nExamples\n"
-            + HelpExampleCli("getrawmempool", "true", "true")
-            + HelpExampleRpc("getrawmempool", "true", "true")
+            + HelpExampleCli("getrawmempool", "\"true\" \"true\"")
+            + HelpExampleRpc("getrawmempool", "\"true\" \"true\"")
         );
 
     LOCK(cs_main);
