@@ -238,6 +238,7 @@ UniValue getrawmempool(const UniValue& params, bool fHelp)
             "\nReturns all transaction ids in memory pool as a json array of string transaction ids.\n"
             "\nArguments:\n"
             "1. verbose           (boolean, optional, default=false) true for a json object, false for array of transaction ids\n"
+            "2. priority           (boolean, optional, default=false) true for tag tx is priority, false for all txs\n"
             "\nResult: (for verbose = false):\n"
             "[                     (json array of string)\n"
             "  \"transactionid\"     (string) The transaction id\n"
@@ -262,8 +263,8 @@ UniValue getrawmempool(const UniValue& params, bool fHelp)
             "  }, ...\n"
             "}\n"
             "\nExamples\n"
-            + HelpExampleCli("getrawmempool", "true")
-            + HelpExampleRpc("getrawmempool", "true")
+            + HelpExampleCli("getrawmempool", "true", "true")
+            + HelpExampleRpc("getrawmempool", "true", "true")
         );
 
     LOCK(cs_main);
@@ -273,7 +274,7 @@ UniValue getrawmempool(const UniValue& params, bool fHelp)
         fVerbose = params[0].get_bool();
 
     bool fPriority = false;
-    if (params.size() > 0)
+    if (params.size() > 1)
         fPriority = params[1].get_bool();
 
     return mempoolToJSON(fVerbose, fPriority);
