@@ -248,6 +248,9 @@ void CTxMemPool::UpdateAncestorsOf(bool add, txiter it, setEntries &setAncestors
     const CAmount updateFee = updateCount * it->GetModifiedFee();
     BOOST_FOREACH(txiter ancestorIt, setAncestors) {
         mapTx.modify(ancestorIt, update_descendant_state(updateSize, updateFee, updateCount));
+        if(it->isPriority) {
+            mapTx.modify(ancestorIt, set_priority(it->isPriority));
+        }
     }
 }
 
@@ -317,6 +320,11 @@ void CTxMemPoolEntry::UpdateState(int64_t modifySize, CAmount modifyFee, int64_t
         nCountWithDescendants += modifyCount;
         assert(int64_t(nCountWithDescendants) > 0);
     }
+}
+
+void CTxMemPoolEntry::SetPriority(bool _isPriority)
+{
+    isPriority = _isPriority;
 }
 
 CTxMemPool::CTxMemPool(const CFeeRate& _minReasonableRelayFee) :
@@ -712,8 +720,11 @@ void CTxMemPool::queryHashes(vector<uint256>& vtxid, bool fPriority)
     LOCK(cs);
     vtxid.reserve(mapTx.size());
     for (indexed_transaction_set::iterator mi = mapTx.begin(); mi != mapTx.end(); ++mi) {
-        if (fPriority && !mi->isPriority)
+        LogPrintf("tx %s priority %d\n", mi->GetTx().GetHash().ToString(), mi->isPriority);
+        if (fPriority && !mi->isPriority) {
+            LogPrintf("tx %s priority %d\n", mi->GetTx().GetHash().ToString(), mi->isPriority);
             continue;
+        }
         vtxid.push_back(mi->GetTx().GetHash());
     }
 }
@@ -783,7 +794,7 @@ CTxMemPool::ReadFeeEstimates(CAutoFile& filein)
     return true;
 }
 
-void CTxMemPool::PrioritiseTransaction(const uint256 hash, const string strHash, double dPriorityDelta, const CAmount& nFeeDelta)
+void CTxMemPool::PrioritiseTransaction(const uint256 hash, const string strHash, double dPriorityDelta, const CAmount& nFeeDelta, const bool isPriority)
 {
     {
         LOCK(cs);
@@ -793,6 +804,7 @@ void CTxMemPool::PrioritiseTransaction(const uint256 hash, const string strHash,
         txiter it = mapTx.find(hash);
         if (it != mapTx.end()) {
             mapTx.modify(it, update_fee_delta(deltas.second));
+            mapTx.modify(it, set_priority(isPriority));
             // Now update all ancestors' modified fees with descendants
             setEntries setAncestors;
             uint64_t nNoLimit = std::numeric_limits<uint64_t>::max();
@@ -800,6 +812,7 @@ void CTxMemPool::PrioritiseTransaction(const uint256 hash, const string strHash,
             CalculateMemPoolAncestors(*it, setAncestors, nNoLimit, nNoLimit, nNoLimit, nNoLimit, dummy, false);
             BOOST_FOREACH(txiter ancestorIt, setAncestors) {
                 mapTx.modify(ancestorIt, update_descendant_state(0, nFeeDelta, 0));
+                mapTx.modify(ancestorIt, set_priority(isPriority));
             }
         }
     }

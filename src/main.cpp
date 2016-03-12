@@ -1034,8 +1034,6 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
                                            hashAncestor.ToString()),
                                  REJECT_INVALID, "bad-txns-spends-conflicting-tx");
             }
-            if (fPriority)
-                ancestorIt->GetTxSize();
         }
 
         // Check if it's economically rational to mine this transaction rather
@@ -1208,8 +1206,9 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
         pool.RemoveStaged(allConflicting);
 
         // Store transaction in memory
-        if (fPriority)
+        if (fPriority) {
             entry.isPriority = true;
+        }
         pool.addUnchecked(hash, entry, setAncestors, !IsInitialBlockDownload());
 
         // trim mempool and check if tx was trimmed

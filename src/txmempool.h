@@ -13,6 +13,7 @@
 #include "coins.h"
 #include "primitives/transaction.h"
 #include "sync.h"
+#include "stdio.h"
 
 #undef foreach
 #include "boost/multi_index_container.hpp"
@@ -98,7 +99,7 @@ public:
     int64_t GetTime() const { return nTime; }
     unsigned int GetHeight() const { return entryHeight; }
     bool WasClearAtEntry() const { return hadNoDependencies; }
-    bool isPriority; //!  Used for if the transaction has a high priority
+    bool isPriority = false; //!  Used for if the transaction has a high priority
     unsigned int GetSigOpCount() const { return sigOpCount; }
     int64_t GetModifiedFee() const { return nFee + feeDelta; }
     size_t DynamicMemoryUsage() const { return nUsageSize; }
@@ -114,7 +115,7 @@ public:
      *  when re-adding transactions from a block back to the mempool.
      */
     void SetDirty();
-    void SetPriority(bool _isPriority) { isPriority = _isPriority; };
+    void SetPriority(bool _isPriority);
     bool IsDirty() const { return nCountWithDescendants == 0; }
 
     uint64_t GetCountWithDescendants() const { return nCountWithDescendants; }
@@ -138,6 +139,15 @@ struct update_descendant_state
         int64_t modifySize;
         CAmount modifyFee;
         int64_t modifyCount;
+};
+
+struct set_priority
+{
+    set_priority(bool _isPriority) : isPriority(_isPriority) { }
+    void operator() (CTxMemPoolEntry &e) { e.SetPriority(isPriority); }
+
+private:
+    bool isPriority;
 };
 
 struct set_dirty
@@ -212,12 +222,16 @@ class CompareTxMemPoolEntryByScore
 public:
     bool operator()(const CTxMemPoolEntry& a, const CTxMemPoolEntry& b)
     {
+        if (int(a.isPriority) + int(b.isPriority) == 1){
+            return a.isPriority;
+        }
+
         double f1 = (double)a.GetModifiedFee() * b.GetTxSize();
         double f2 = (double)b.GetModifiedFee() * a.GetTxSize();
         if (f1 == f2) {
             return b.GetTx().GetHash() < a.GetTx().GetHash();
         }
-        return f1 > f2;
+        return f1 < f2;
     }
 };
 
@@ -443,7 +457,7 @@ public:
     bool HasNoInputsOf(const CTransaction& tx) const;
 
     /** Affect CreateNewBlock prioritisation of transactions */
-    void PrioritiseTransaction(const uint256 hash, const std::string strHash, double dPriorityDelta, const CAmount& nFeeDelta);
+    void PrioritiseTransaction(const uint256 hash, const std::string strHash, double dPriorityDelta, const CAmount& nFeeDelta, const bool isPriority);
     void ApplyDeltas(const uint256 hash, double &dPriorityDelta, CAmount &nFeeDelta) const;
     void ClearPrioritisation(const uint256 hash);
 

@@ -162,6 +162,8 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
         while (mi != mempool.mapTx.get<3>().end() || !clearedTxs.empty())
         {
             bool priorityTx = false;
+            LogPrintf("ttttttttttttt\n");
+
             if (fPriorityBlock && !vecPriority.empty()) { // add a tx from priority queue to fill the blockprioritysize
                 priorityTx = true;
                 iter = vecPriority.front().second;
@@ -188,6 +190,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
             {
                 if (!inBlock.count(parent)) {
                     fOrphan = true;
+                    LogPrintf("break from 1\n");
                     break;
                 }
             }
@@ -205,12 +208,22 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
                 fPriorityBlock = false;
                 waitPriMap.clear();
             }
-            if (!priorityTx &&
+            if (fPrintPriority)
+            {
+                double dPriority = iter->GetPriority(nHeight);
+                CAmount dummy;
+                mempool.ApplyDeltas(tx.GetHash(), dPriority, dummy);
+                LogPrintf("priority %.1f fee %s txid %s\n",
+                          dPriority , CFeeRate(iter->GetModifiedFee(), nTxSize).ToString(), tx.GetHash().ToString());
+            }
+            if (!priorityTx && !iter->isPriority &&
                 (iter->GetModifiedFee() < ::minRelayTxFee.GetFee(nTxSize) && nBlockSize >= nBlockMinSize)) {
+                LogPrintf("break from 2\n");
                 break;
             }
             if (nBlockSize + nTxSize >= nBlockMaxSize) {
                 if (nBlockSize >  nBlockMaxSize - 100 || lastFewTxs > 50) {
+                    LogPrintf("break from 3\n");
                     break;
                 }
                 // Once we're within 1000 bytes of a full block, only look at 50 more txs
@@ -227,6 +240,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
             unsigned int nTxSigOps = iter->GetSigOpCount();
             if (nBlockSigOps + nTxSigOps >= MAX_BLOCK_SIGOPS) {
                 if (nBlockSigOps > MAX_BLOCK_SIGOPS - 2) {
+                    LogPrintf("break from 4\n");
                     break;
                 }
                 continue;
@@ -242,14 +256,6 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
             nBlockSigOps += nTxSigOps;
             nFees += nTxFees;
 
-            if (fPrintPriority)
-            {
-                double dPriority = iter->GetPriority(nHeight);
-                CAmount dummy;
-                mempool.ApplyDeltas(tx.GetHash(), dPriority, dummy);
-                LogPrintf("priority %.1f fee %s txid %s\n",
-                          dPriority , CFeeRate(iter->GetModifiedFee(), nTxSize).ToString(), tx.GetHash().ToString());
-            }
 
             inBlock.insert(iter);
 
