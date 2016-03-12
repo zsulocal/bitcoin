@@ -162,7 +162,6 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
         while (mi != mempool.mapTx.get<3>().end() || !clearedTxs.empty())
         {
             bool priorityTx = false;
-            LogPrintf("ttttttttttttt\n");
 
             if (fPriorityBlock && !vecPriority.empty()) { // add a tx from priority queue to fill the blockprioritysize
                 priorityTx = true;
@@ -190,7 +189,6 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
             {
                 if (!inBlock.count(parent)) {
                     fOrphan = true;
-                    LogPrintf("break from 1\n");
                     break;
                 }
             }
@@ -218,12 +216,10 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
             }
             if (!priorityTx && !iter->isPriority &&
                 (iter->GetModifiedFee() < ::minRelayTxFee.GetFee(nTxSize) && nBlockSize >= nBlockMinSize)) {
-                LogPrintf("break from 2\n");
                 break;
             }
             if (nBlockSize + nTxSize >= nBlockMaxSize) {
                 if (nBlockSize >  nBlockMaxSize - 100 || lastFewTxs > 50) {
-                    LogPrintf("break from 3\n");
                     break;
                 }
                 // Once we're within 1000 bytes of a full block, only look at 50 more txs
@@ -240,7 +236,6 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
             unsigned int nTxSigOps = iter->GetSigOpCount();
             if (nBlockSigOps + nTxSigOps >= MAX_BLOCK_SIGOPS) {
                 if (nBlockSigOps > MAX_BLOCK_SIGOPS - 2) {
-                    LogPrintf("break from 4\n");
                     break;
                 }
                 continue;
