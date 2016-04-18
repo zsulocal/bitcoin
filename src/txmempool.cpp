@@ -721,7 +721,6 @@ void CTxMemPool::queryHashes(vector<uint256>& vtxid, bool fPriority)
     vtxid.reserve(mapTx.size());
     for (indexed_transaction_set::iterator mi = mapTx.begin(); mi != mapTx.end(); ++mi) {
         if (fPriority && !mi->isPriority) {
-            LogPrintf("tx %s priority %d\n", mi->GetTx().GetHash().ToString(), mi->isPriority);
             continue;
         }
         vtxid.push_back(mi->GetTx().GetHash());

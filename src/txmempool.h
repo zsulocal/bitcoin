@@ -231,7 +231,7 @@ public:
         if (f1 == f2) {
             return b.GetTx().GetHash() < a.GetTx().GetHash();
         }
-        return f1 < f2;
+        return f1 > f2;
     }
 };
 
