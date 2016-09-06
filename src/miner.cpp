@@ -532,6 +532,7 @@ void BlockAssembler::addPriorityTxs()
     {
         double dPriority = mi->GetPriority(nHeight);
         CAmount dummy;
+        LogPrintf("priority %.1f txid %s\n", dPriority, mi->GetTx().GetHash().ToString());
         mempool.ApplyDeltas(mi->GetTx().GetHash(), dPriority, dummy);
         vecPriority.push_back(TxCoinAgePriority(dPriority, mi));
     }

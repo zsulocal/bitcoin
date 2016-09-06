@@ -366,6 +366,9 @@ std::string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-proxyrandomize", strprintf(_("Randomize credentials for every proxy connection. This enables Tor stream isolation (default: %u)"), DEFAULT_PROXYRANDOMIZE));
     strUsage += HelpMessageOpt("-seednode=<ip>", _("Connect to a node to retrieve peer addresses, and disconnect"));
     strUsage += HelpMessageOpt("-timeout=<n>", strprintf(_("Specify connection timeout in milliseconds (minimum: 1, default: %d)"), DEFAULT_CONNECT_TIMEOUT));
+    strUsage += HelpMessageOpt("-limitdownloadblocks=<n>", _("Limit download blocks number from this node's height (default: INT32_MAX)"));
+    strUsage += HelpMessageOpt("-outboundconnections=<n>", _("Max outbound connections, should <= -maxconnections (default: 8)"));
+    strUsage += HelpMessageOpt("-relaytransaction", _("Enalbe relay transactions and collection them into mempool (default: 1)"));
     strUsage += HelpMessageOpt("-torcontrol=<ip>:<port>", strprintf(_("Tor control port to use if onion listening enabled (default: %s)"), DEFAULT_TOR_CONTROL));
     strUsage += HelpMessageOpt("-torpassword=<pass>", _("Tor control port password (default: empty)"));
 #ifdef USE_UPNP
@@ -836,11 +839,16 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
         }
 #endif
     }
+    // nLimitDownloadBlocks
+    nLimitDownloadBlocks = GetArg("-limitdownloadblocks", 2147483647);
 
     // Make sure enough file descriptors are available
     int nBind = std::max((int)mapArgs.count("-bind") + (int)mapArgs.count("-whitebind"), 1);
     int nUserMaxConnections = GetArg("-maxconnections", DEFAULT_MAX_PEER_CONNECTIONS);
     nMaxConnections = std::max(nUserMaxConnections, 0);
+    nMaxOutboundConnections = GetArg("-outboundconnections", 8);
+    nMaxOutboundConnections = std::min(nMaxConnections, nMaxOutboundConnections);
+    relayTransaction = GetArg("-relaytransaction", 1);
 
     // Trim requested connection counts, to fit into system limitations
     nMaxConnections = std::max(std::min(nMaxConnections, (int)(FD_SETSIZE - nBind - MIN_CORE_FILEDESCRIPTORS)), 0);

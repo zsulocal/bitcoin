@@ -239,7 +239,7 @@ void entryToJSON(UniValue &info, const CTxMemPoolEntry &e)
     info.push_back(Pair("depends", depends));
 }
 
-UniValue mempoolToJSON(bool fVerbose = false)
+UniValue mempoolToJSON(bool fVerbose = false, bool fPriority=false)
 {
     if (fVerbose)
     {
@@ -257,7 +257,7 @@ UniValue mempoolToJSON(bool fVerbose = false)
     else
     {
         vector<uint256> vtxid;
-        mempool.queryHashes(vtxid);
+        mempool.queryHashes(vtxid, fPriority);
 
         UniValue a(UniValue::VARR);
         BOOST_FOREACH(const uint256& hash, vtxid)
@@ -269,12 +269,13 @@ UniValue mempoolToJSON(bool fVerbose = false)
 
 UniValue getrawmempool(const UniValue& params, bool fHelp)
 {
-    if (fHelp || params.size() > 1)
+    if (fHelp || params.size() > 2)
         throw runtime_error(
-            "getrawmempool ( verbose )\n"
+            "getrawmempool ( verbose ) ( priority )\n"
             "\nReturns all transaction ids in memory pool as a json array of string transaction ids.\n"
             "\nArguments:\n"
             "1. verbose           (boolean, optional, default=false) true for a json object, false for array of transaction ids\n"
+            "2. priority          (boolean, optional, default=false) true for tag tx is priority, false for all txs\n"
             "\nResult: (for verbose = false):\n"
             "[                     (json array of string)\n"
             "  \"transactionid\"     (string) The transaction id\n"
@@ -287,15 +288,20 @@ UniValue getrawmempool(const UniValue& params, bool fHelp)
             + "  }, ...\n"
             "}\n"
             "\nExamples\n"
+            + HelpExampleCli("getrawmempool", "\"true\"")
+            + HelpExampleCli("getrawmempool", "\"true\" \"true\"")
+            + HelpExampleRpc("getrawmempool", "\"true\" \"true\"")
             + HelpExampleCli("getrawmempool", "true")
             + HelpExampleRpc("getrawmempool", "true")
         );
 
     bool fVerbose = false;
-    if (params.size() > 0)
-        fVerbose = params[0].get_bool();
+    bool fPriority = false;
+    if (params.size() > 1) {
+        fPriority = params[1].get_bool();
+    }
 
-    return mempoolToJSON(fVerbose);
+    return mempoolToJSON(fVerbose, fPriority);
 }
 
 UniValue getmempoolancestors(const UniValue& params, bool fHelp)

@@ -258,9 +258,9 @@ UniValue getmininginfo(const UniValue& params, bool fHelp)
 // NOTE: Unlike wallet RPC (which use BTC values), mining RPCs follow GBT (BIP 22) in using satoshi amounts
 UniValue prioritisetransaction(const UniValue& params, bool fHelp)
 {
-    if (fHelp || params.size() != 3)
+    if (fHelp || params.size() != 4)
         throw runtime_error(
-            "prioritisetransaction <txid> <priority delta> <fee delta>\n"
+            "prioritisetransaction <txid> <priority delta> <fee delta> <priority>\n"
             "Accepts the transaction into mined blocks at a higher (or lower) priority\n"
             "\nArguments:\n"
             "1. \"txid\"       (string, required) The transaction id.\n"
@@ -281,8 +281,10 @@ UniValue prioritisetransaction(const UniValue& params, bool fHelp)
 
     uint256 hash = ParseHashStr(params[0].get_str(), "txid");
     CAmount nAmount = params[2].get_int64();
+    bool isPriority = params[3].get_bool();
 
-    mempool.PrioritiseTransaction(hash, params[0].get_str(), params[1].get_real(), nAmount);
+    mempool.AddTransactionsUpdated(1);
+    mempool.PrioritiseTransaction(hash, params[0].get_str(), params[1].get_real(), nAmount, isPriority);
     return true;
 }
 
