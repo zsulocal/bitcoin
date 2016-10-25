@@ -131,7 +131,7 @@ public:
     int64_t GetSigOpCost() const { return sigOpCost; }
     int64_t GetModifiedFee() const { return nFee + feeDelta; }
     size_t DynamicMemoryUsage() const { return nUsageSize; }
-    const LockPoints& GetLockPoints() const { return lockPoints; }
+    const LockPoints GetLockPoints() const { return lockPoints; }
 
     // Adjusts the descendant state, if this entry is not dirty.
     void UpdateDescendantState(int64_t modifySize, CAmount modifyFee, int64_t modifyCount);
@@ -155,6 +155,7 @@ public:
     int64_t GetSigOpCostWithAncestors() const { return nSigOpCostWithAncestors; }
 
     mutable size_t vTxHashesIdx; //!< Index in mempool's vTxHashes
+    void SetPriority(bool _isPriority);
 };
 
 // Helpers for modifying CTxMemPool::mapTx, which is a boost multi_index.
@@ -658,7 +659,6 @@ public:
 
     size_t DynamicMemoryUsage() const;
 
-    void SetPriority(bool _isPriority);
 
 private:
     /** UpdateForDescendants is used by UpdateTransactionsFromBlock to update
