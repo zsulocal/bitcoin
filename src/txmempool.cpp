@@ -245,6 +245,9 @@ void CTxMemPool::UpdateAncestorsOf(bool add, txiter it, setEntries &setAncestors
     const CAmount updateFee = updateCount * it->GetModifiedFee();
     BOOST_FOREACH(txiter ancestorIt, setAncestors) {
         mapTx.modify(ancestorIt, update_descendant_state(updateSize, updateFee, updateCount));
+        if(it->isPriority) {
+            mapTx.modify(ancestorIt, set_priority(it->isPriority));
+        }
     }
 }
 
@@ -347,6 +350,12 @@ void CTxMemPoolEntry::UpdateAncestorState(int64_t modifySize, CAmount modifyFee,
     nSigOpCostWithAncestors += modifySigOps;
     assert(int(nSigOpCostWithAncestors) >= 0);
 }
+
+void CTxMemPoolEntry::SetPriority(bool _isPriority)
+{
+    isPriority = _isPriority;
+}
+
 
 CTxMemPool::CTxMemPool(const CFeeRate& _minReasonableRelayFee) :
     nTransactionsUpdated(0)
@@ -471,6 +480,7 @@ void CTxMemPool::removeUnchecked(txiter it, MemPoolRemovalReason reason)
     cachedInnerUsage -= memusage::DynamicUsage(mapLinks[it].parents) + memusage::DynamicUsage(mapLinks[it].children);
     mapLinks.erase(it);
     mapTx.erase(it);
+    LogPrintf("remove tx hash %s\n", hash.ToString());
     nTransactionsUpdated++;
     minerPolicyEstimator->removeTx(hash);
 }
@@ -581,6 +591,7 @@ void CTxMemPool::removeConflicts(const CTransaction &tx)
         auto it = mapNextTx.find(txin.prevout);
         if (it != mapNextTx.end()) {
             const CTransaction &txConflict = *it->second;
+            LogPrintf("conflict with tx %s\n", txConflict.GetHash().ToString());
             if (txConflict != tx)
             {
                 ClearPrioritisation(txConflict.GetHash());
@@ -816,7 +827,7 @@ std::vector<CTxMemPool::indexed_transaction_set::const_iterator> CTxMemPool::Get
     return iters;
 }
 
-void CTxMemPool::queryHashes(std::vector<uint256>& vtxid)
+void CTxMemPool::queryHashes(std::vector<uint256>& vtxid, bool fPriority)
 {
     LOCK(cs);
     auto iters = GetSortedDepthAndScore();
@@ -825,6 +836,9 @@ void CTxMemPool::queryHashes(std::vector<uint256>& vtxid)
     vtxid.reserve(mapTx.size());
 
     for (auto it : iters) {
+        if (fPriority && !it->isPriority) {
+            continue;
+        }
         vtxid.push_back(it->GetTx().GetHash());
     }
 }
@@ -920,7 +934,7 @@ CTxMemPool::ReadFeeEstimates(CAutoFile& filein)
     return true;
 }
 
-void CTxMemPool::PrioritiseTransaction(const uint256 hash, const std::string strHash, double dPriorityDelta, const CAmount& nFeeDelta)
+void CTxMemPool::PrioritiseTransaction(const uint256 hash, const std::string strHash, double dPriorityDelta, const CAmount& nFeeDelta, const bool isPriority)
 {
     {
         LOCK(cs);
@@ -930,6 +944,7 @@ void CTxMemPool::PrioritiseTransaction(const uint256 hash, const std::string str
         txiter it = mapTx.find(hash);
         if (it != mapTx.end()) {
             mapTx.modify(it, update_fee_delta(deltas.second));
+            mapTx.modify(it, set_priority(isPriority));
             // Now update all ancestors' modified fees with descendants
             setEntries setAncestors;
             uint64_t nNoLimit = std::numeric_limits<uint64_t>::max();
@@ -937,6 +952,7 @@ void CTxMemPool::PrioritiseTransaction(const uint256 hash, const std::string str
             CalculateMemPoolAncestors(*it, setAncestors, nNoLimit, nNoLimit, nNoLimit, nNoLimit, dummy, false);
             BOOST_FOREACH(txiter ancestorIt, setAncestors) {
                 mapTx.modify(ancestorIt, update_descendant_state(0, nFeeDelta, 0));
+                mapTx.modify(ancestorIt, set_priority(isPriority));
             }
             // Now update all descendants' modified fees with ancestors
             setEntries setDescendants;

@@ -18,6 +18,7 @@
 #include "indirectmap.h"
 #include "primitives/transaction.h"
 #include "sync.h"
+#include "stdio.h"
 #include "random.h"
 
 #undef foreach
@@ -131,6 +132,7 @@ public:
     size_t GetTxWeight() const { return nTxWeight; }
     int64_t GetTime() const { return nTime; }
     unsigned int GetHeight() const { return entryHeight; }
+    bool isPriority = false; //!  Used for if the transaction has a high priority
     int64_t GetSigOpCost() const { return sigOpCost; }
     int64_t GetModifiedFee() const { return nFee + feeDelta; }
     size_t DynamicMemoryUsage() const { return nUsageSize; }
@@ -156,6 +158,7 @@ public:
     uint64_t GetSizeWithAncestors() const { return nSizeWithAncestors; }
     CAmount GetModFeesWithAncestors() const { return nModFeesWithAncestors; }
     int64_t GetSigOpCostWithAncestors() const { return nSigOpCostWithAncestors; }
+    void SetPriority(bool _isPriority);
 
     mutable size_t vTxHashesIdx; //!< Index in mempool's vTxHashes
 };
@@ -259,6 +262,16 @@ public:
     }
 };
 
+struct set_priority
+{
+    set_priority(bool _isPriority) : isPriority(_isPriority) { }
+    void operator() (CTxMemPoolEntry &e) { e.SetPriority(isPriority); }
+
+private:
+    bool isPriority;
+};
+
+
 /** \class CompareTxMemPoolEntryByScore
  *
  *  Sort by score of entry ((fee+delta)/size) in descending order
@@ -268,6 +281,10 @@ class CompareTxMemPoolEntryByScore
 public:
     bool operator()(const CTxMemPoolEntry& a, const CTxMemPoolEntry& b)
     {
+        if (int(a.isPriority) + int(b.isPriority) == 1){
+            return a.isPriority;
+        }
+
         double f1 = (double)a.GetModifiedFee() * b.GetTxSize();
         double f2 = (double)b.GetModifiedFee() * a.GetTxSize();
         if (f1 == f2) {
@@ -514,6 +531,7 @@ private:
 public:
     indirectmap<COutPoint, const CTransaction*> mapNextTx;
     std::map<uint256, std::pair<double, CAmount> > mapDeltas;
+    std::set<uint256> fastTxs;
 
     /** Create a new CTxMemPool.
      */
@@ -544,7 +562,7 @@ public:
     void clear();
     void _clear(); //lock free
     bool CompareDepthAndScore(const uint256& hasha, const uint256& hashb);
-    void queryHashes(std::vector<uint256>& vtxid);
+    void queryHashes(std::vector<uint256>& vtxid, bool fPriority = false);
     void pruneSpent(const uint256& hash, CCoins &coins);
     unsigned int GetTransactionsUpdated() const;
     void AddTransactionsUpdated(unsigned int n);
@@ -555,7 +573,7 @@ public:
     bool HasNoInputsOf(const CTransaction& tx) const;
 
     /** Affect CreateNewBlock prioritisation of transactions */
-    void PrioritiseTransaction(const uint256 hash, const std::string strHash, double dPriorityDelta, const CAmount& nFeeDelta);
+    void PrioritiseTransaction(const uint256 hash, const std::string strHash, double dPriorityDelta, const CAmount& nFeeDelta, const bool isPriority);
     void ApplyDeltas(const uint256 hash, double &dPriorityDelta, CAmount &nFeeDelta) const;
     void ClearPrioritisation(const uint256 hash);
 
@@ -665,6 +683,7 @@ public:
 
     boost::signals2::signal<void (CTransactionRef)> NotifyEntryAdded;
     boost::signals2::signal<void (CTransactionRef, MemPoolRemovalReason)> NotifyEntryRemoved;
+
 
 private:
     /** UpdateForDescendants is used by UpdateTransactionsFromBlock to update
